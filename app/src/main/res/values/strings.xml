@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">FocusFloat</string>
+    <string name="distracting_gate_accessibility_label">FocusFloat app guard</string>
+    <string name="distracting_gate_accessibility_description">Shows FocusFloat confirmation before distracting apps opened outside the launcher.</string>
+    <string name="digital_wellbeing_automation_accessibility_label">FocusFloat Focus Mode assistant</string>
+    <string name="digital_wellbeing_automation_accessibility_description">Helps FocusFloat select pause-list apps inside Pixel Focus Mode.</string>
+</resources>
