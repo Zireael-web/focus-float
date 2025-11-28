@@ -31,7 +31,6 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
-import com.focusfloat.app.FocusFloatApplication
 import com.focusfloat.app.MainActivity
 import com.focusfloat.app.design.ActionLine
 import com.focusfloat.app.design.FocusFloatTheme
@@ -64,7 +63,7 @@ class DistractingGateActivity : ComponentActivity() {
                     var value by remember { mutableStateOf("") }
                     val focusRequester = remember { FocusRequester() }
                     val keyboard = LocalSoftwareKeyboardController.current
-                    val confirmed = value.trim() == "confirmed"
+                    val confirmed = value.trim().equals("confirmed", ignoreCase = true)
 
                     LaunchedEffect(Unit) {
                         focusRequester.requestFocus()
@@ -107,8 +106,6 @@ class DistractingGateActivity : ComponentActivity() {
                             enabled = confirmed,
                             onClick = {
                                 DistractingGateApprovals.approve(packageName)
-                                (application as FocusFloatApplication).container.distractingReminderScheduler
-                                    .schedule(packageName, userSerial, appLabel)
                                 setResult(Activity.RESULT_OK)
                                 if (launchTargetApp(packageName, userSerial)) {
                                     finish()

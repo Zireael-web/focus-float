@@ -1100,7 +1100,7 @@ private fun DistractingGateDialog(
     var value by remember { mutableStateOf("") }
     val focusRequester = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
-    val confirmed = value.trim() == "confirmed"
+    val confirmed = value.trim().equals("confirmed", ignoreCase = true)
     LaunchedEffect(Unit) {
         focusRequester.requestFocus()
         keyboard?.show()

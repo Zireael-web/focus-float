@@ -20,6 +20,7 @@ import com.focusfloat.app.digitalwellbeing.DigitalWellbeingAutomationMode
 import com.focusfloat.app.digitalwellbeing.DigitalWellbeingAutomationState
 import com.focusfloat.app.digitalwellbeing.DigitalWellbeingAutomationStatus
 import com.focusfloat.app.digitalwellbeing.DigitalWellbeingAutomationTarget
+import com.focusfloat.app.distracting.DistractingGateApprovals
 import com.focusfloat.app.pause.model.PauseSession
 import com.focusfloat.app.pause.model.PauseSessionStatus
 import com.focusfloat.app.pause.shizuku.ShizukuStatus
@@ -224,6 +225,7 @@ class MainViewModel(
 
     fun launchConfirmedDistractingApp(app: AppEntry) {
         viewModelScope.launch {
+            DistractingGateApprovals.approve(app.key.packageName)
             runCatching { container.installedAppsRepository.launch(app) }
                 .onSuccess { container.distractingReminderScheduler.schedule(app.key.packageName, app.key.userSerial, app.displayLabel) }
                 .onFailure { banner.value = UiBanner("Could not open ${app.displayLabel}", it.message, failed = true) }

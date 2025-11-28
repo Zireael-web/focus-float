@@ -13,6 +13,8 @@ class DistractingReminderWorker(
             ?.takeIf { it.isNotBlank() }
             ?: "this app"
         val packageName = inputData.getString(DistractingReminderScheduler.KEY_PACKAGE_NAME)
+        // If WorkManager starts a fresh process, foreground state is unknown. We intentionally
+        // skip the reminder instead of requesting PACKAGE_USAGE_STATS for a best-effort fallback.
         if (packageName != null && !DistractingForegroundState.shouldShowReminder(packageName)) {
             return Result.success()
         }
