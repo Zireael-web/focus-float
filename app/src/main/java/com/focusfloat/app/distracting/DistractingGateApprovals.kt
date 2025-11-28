@@ -3,19 +3,44 @@ package com.focusfloat.app.distracting
 import android.os.SystemClock
 import java.util.concurrent.ConcurrentHashMap
 
-object DistractingGateApprovals {
-    private const val APPROVAL_WINDOW_MS = 8_000L
+internal interface DistractingGateApprovalRegistry {
+    fun redeem(packageName: String): Boolean
+}
+
+internal class DistractingGateApprovalStore(
+    private val nowElapsedMs: () -> Long,
+) : DistractingGateApprovalRegistry {
     private val approvedUntil = ConcurrentHashMap<String, Long>()
 
     fun approve(packageName: String) {
-        approvedUntil[packageName] = SystemClock.elapsedRealtime() + APPROVAL_WINDOW_MS
+        approvedUntil[packageName] = nowElapsedMs() + APPROVAL_TTL_MS
     }
 
-    fun isTemporarilyApproved(packageName: String): Boolean {
+    override fun redeem(packageName: String): Boolean {
         val expiry = approvedUntil[packageName] ?: return false
-        val active = SystemClock.elapsedRealtime() <= expiry
-        if (!active) approvedUntil.remove(packageName, expiry)
+        val active = nowElapsedMs() <= expiry
+        approvedUntil.remove(packageName, expiry)
         return active
+    }
+
+    fun clear() {
+        approvedUntil.clear()
+    }
+
+    private companion object {
+        private const val APPROVAL_TTL_MS = 60_000L
+    }
+}
+
+object DistractingGateApprovals : DistractingGateApprovalRegistry {
+    private val store = DistractingGateApprovalStore(SystemClock::elapsedRealtime)
+
+    fun approve(packageName: String) {
+        store.approve(packageName)
+    }
+
+    override fun redeem(packageName: String): Boolean {
+        return store.redeem(packageName)
     }
 }
 
