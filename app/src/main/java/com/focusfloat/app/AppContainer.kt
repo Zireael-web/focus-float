@@ -69,7 +69,6 @@ class AppContainer(context: Context) {
         shizuku = shizukuPauseExecutor,
         deviceOwner = deviceOwnerPauseExecutor,
         manual = manualPauseExecutor,
-        settings = settingsRepository,
     )
     private val pauseExpiryScheduler = PauseExpiryScheduler(appContext)
     val pauseNotificationController = PauseNotificationController(appContext)

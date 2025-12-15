@@ -19,7 +19,6 @@ import com.focusfloat.app.pause.model.PausePackageFailure
 import com.focusfloat.app.pause.model.PauseSession
 import com.focusfloat.app.pause.scheduler.PauseAlarmReceiver
 import com.focusfloat.app.pause.scheduler.PauseExpiryScheduler
-import com.focusfloat.app.pause.shizuku.ShizukuPauseExecutor
 
 class PauseNotificationController(private val context: Context) {
     fun ensureChannels() {
@@ -112,22 +111,10 @@ class PauseNotificationController(private val context: Context) {
     }
 
     private fun openLauncherIntent(): PendingIntent {
-        val intent = Intent(context, MainActivity::class.java)
         return PendingIntent.getActivity(
             context,
             20_001,
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-        )
-    }
-
-    private fun openShizukuIntent(): PendingIntent {
-        val intent = context.packageManager.getLaunchIntentForPackage(ShizukuPauseExecutor.SHIZUKU_PACKAGE)
-            ?: Intent(android.provider.Settings.ACTION_SETTINGS)
-        return PendingIntent.getActivity(
-            context,
-            20_002,
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            focusFloatIntent(),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
     }
@@ -154,9 +141,8 @@ class PauseNotificationController(private val context: Context) {
 
     private fun defaultActions(): List<NotificationAction> = listOf(
         NotificationAction(
-            title = "Open Shizuku",
-            intent = context.packageManager.getLaunchIntentForPackage(ShizukuPauseExecutor.SHIZUKU_PACKAGE)
-                ?: Intent(Settings.ACTION_SETTINGS),
+            title = "Open FocusFloat",
+            intent = focusFloatIntent(),
             requestCode = 20_002,
         ),
         NotificationAction(
@@ -167,6 +153,11 @@ class PauseNotificationController(private val context: Context) {
             broadcast = true,
         ),
     )
+
+    private fun focusFloatIntent(): Intent {
+        return Intent(context, MainActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
 
     companion object {
         const val CHANNEL_PAUSE_STATUS = "pause_status"

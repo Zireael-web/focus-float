@@ -9,11 +9,9 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.focusfloat.app.design.FocusTextScale
 import com.focusfloat.app.design.FocusThemeMode
-import com.focusfloat.app.pause.model.PauseExecutorPreference
 import java.io.IOException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 private val Context.focusFloatDataStore by preferencesDataStore(name = "focusfloat_settings")
@@ -26,7 +24,6 @@ data class FocusSettings(
     val onboardingCompleted: Boolean,
     val systemPausedAppsImported: Boolean,
     val primaryPauseCategoryId: Long?,
-    val pauseExecutorPreference: PauseExecutorPreference,
 )
 
 class SettingsRepository(private val context: Context) {
@@ -45,7 +42,6 @@ class SettingsRepository(private val context: Context) {
                 onboardingCompleted = prefs[Keys.onboardingCompleted] ?: false,
                 systemPausedAppsImported = prefs[Keys.systemPausedAppsImported] ?: false,
                 primaryPauseCategoryId = prefs[Keys.primaryPauseCategoryId]?.takeIf { it > 0 },
-                pauseExecutorPreference = prefs[Keys.executorPreference].toPauseExecutorPreference(),
             )
         }
 
@@ -61,20 +57,12 @@ class SettingsRepository(private val context: Context) {
         dataStore.edit { it[Keys.textScale] = scale.name }
     }
 
-    suspend fun setPauseExecutorPreference(preference: PauseExecutorPreference) {
-        dataStore.edit { it[Keys.executorPreference] = preference.name }
-    }
-
     suspend fun setOnboardingCompleted(completed: Boolean) {
         dataStore.edit { it[Keys.onboardingCompleted] = completed }
     }
 
     suspend fun setSystemPausedAppsImported(imported: Boolean) {
         dataStore.edit { it[Keys.systemPausedAppsImported] = imported }
-    }
-
-    suspend fun pauseExecutorPreference(): PauseExecutorPreference {
-        return settings.map { it.pauseExecutorPreference }.firstValue()
     }
 
     private object Keys {
@@ -92,17 +80,3 @@ class SettingsRepository(private val context: Context) {
 private inline fun <reified T : Enum<T>> String.enumValueOrNull(): T? {
     return enumValues<T>().firstOrNull { it.name == this }
 }
-
-private fun String?.toPauseExecutorPreference(): PauseExecutorPreference {
-    return when (this) {
-        null -> PauseExecutorPreference.Auto
-        "Shizuku",
-        "ShizukuShell",
-        "DeviceOwner",
-        "Manual",
-        "ManualOnly" -> PauseExecutorPreference.Auto
-        else -> this?.enumValueOrNull<PauseExecutorPreference>() ?: PauseExecutorPreference.Auto
-    }
-}
-
-private suspend fun <T> Flow<T>.firstValue(): T = first()

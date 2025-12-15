@@ -45,14 +45,6 @@ enum class PauseExecutorType {
     ManualOnly,
 }
 
-enum class PauseExecutorPreference {
-    Auto,
-    WellbeingRoot,
-    Shizuku,
-    DeviceOwner,
-    Manual,
-}
-
 enum class PauseAction {
     Pause,
     Unpause,
