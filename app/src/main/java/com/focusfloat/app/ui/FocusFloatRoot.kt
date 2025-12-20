@@ -76,7 +76,6 @@ import com.focusfloat.app.design.TopBar
 import com.focusfloat.app.digitalwellbeing.DigitalWellbeingAutomationState
 import com.focusfloat.app.digitalwellbeing.DigitalWellbeingAutomationStatus
 import com.focusfloat.app.pause.model.PauseSessionStatus
-import com.focusfloat.app.pause.shizuku.ShizukuStatus
 import java.time.Instant
 import kotlin.math.abs
 
@@ -84,12 +83,10 @@ private enum class Route {
     Onboarding,
     Home,
     Apps,
-    Search,
     Category,
     Distracting,
     Settings,
     Hidden,
-    Shizuku,
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -131,11 +128,9 @@ fun FocusFloatRoot(
                 route = addAppsReturnRoute ?: Route.Home
                 addAppsReturnRoute = null
             }
-            Route.Search,
             Route.Category -> route = Route.Home
             Route.Distracting,
             Route.Hidden,
-            Route.Shizuku,
             Route.Onboarding -> route = Route.Settings
             Route.Settings -> route = Route.Home
         }
@@ -229,11 +224,6 @@ fun FocusFloatRoot(
                             onAppClick = { selectedApp = it },
                             onOpenSettings = { route = Route.Settings },
                         )
-                        targetRoute == Route.Search -> SearchScreen(
-                            apps = state.visibleApps,
-                            onBack = ::navigateBack,
-                            onAppClick = { selectedApp = it },
-                        )
                         targetRoute == Route.Category -> CategoryScreen(
                             state = state,
                             onBack = ::navigateBack,
@@ -272,15 +262,6 @@ fun FocusFloatRoot(
                             apps = state.hiddenApps,
                             onBack = ::navigateBack,
                             onRestore = { actions.hideApp(it, hidden = false) },
-                        )
-                        targetRoute == Route.Shizuku -> ShizukuScreen(
-                            state = state,
-                            onBack = ::navigateBack,
-                            onOpenShizuku = actions::openShizuku,
-                            onOpenShizukuDownload = actions::openShizukuDownload,
-                            onOpenShizukuPlayStore = actions::openShizukuPlayStore,
-                            onOpenShizukuGitHubRelease = actions::openShizukuGitHubRelease,
-                            onRequestPermission = actions::requestShizukuPermission,
                         )
                     }
                 }
@@ -697,65 +678,6 @@ private fun AppsScreen(
 }
 
 @Composable
-private fun SearchScreen(
-    apps: List<AppEntry>,
-    onBack: () -> Unit,
-    onAppClick: (AppEntry) -> Unit,
-) {
-    var query by rememberSaveable(stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue("")) }
-    val focusRequester = remember { FocusRequester() }
-    val keyboard = LocalSoftwareKeyboardController.current
-    LaunchedEffect(Unit) {
-        focusRequester.requestFocus()
-        keyboard?.show()
-    }
-    val results = remember(apps, query.text) {
-        val needle = query.text.trim().lowercase()
-        if (needle.isBlank()) emptyList() else apps.filter {
-            it.displayLabel.lowercase().contains(needle) || it.key.packageName.lowercase().contains(needle)
-        }
-    }
-    Column(Modifier.fillMaxSize().padding(top = 28.dp, bottom = 22.dp).imePadding()) {
-        TopBar(title = "Search apps", onBack = onBack)
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = FocusTheme.spacing.screenPad)
-                .height(56.dp),
-            contentAlignment = Alignment.CenterStart,
-        ) {
-            if (query.text.isBlank()) {
-                Text("Search apps", color = FocusTheme.colors.text3, style = FocusTheme.type.appRow)
-            }
-            BasicTextField(
-                value = query,
-                onValueChange = { query = it },
-                textStyle = FocusTheme.type.appRow.copy(color = FocusTheme.colors.text),
-                modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
-                singleLine = true,
-            )
-        }
-        Box(Modifier.fillMaxWidth().height(0.5.dp).background(FocusTheme.colors.line))
-        if (query.text.isBlank()) {
-            EmptyLine("Type to search")
-        } else if (results.isEmpty()) {
-            EmptyLine("No results")
-        } else {
-            LazyColumn(modifier = Modifier.weight(1f)) {
-                items(results, key = { "${it.key.packageName}/${it.key.className}/${it.key.userSerial}" }) { app ->
-                    AppTextRow(
-                        name = app.displayLabel,
-                        state = app.rowState(),
-                        meta = app.meta(),
-                        onClick = { onAppClick(app) },
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
 private fun CategoryScreen(
     state: MainUiState,
     onBack: () -> Unit,
@@ -931,65 +853,6 @@ private fun HiddenAppsScreen(
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun ShizukuScreen(
-    state: MainUiState,
-    onBack: () -> Unit,
-    onOpenShizuku: () -> Unit,
-    onOpenShizukuDownload: () -> Unit,
-    onOpenShizukuPlayStore: () -> Unit,
-    onOpenShizukuGitHubRelease: () -> Unit,
-    onRequestPermission: () -> Unit,
-) {
-    Column(Modifier.fillMaxSize().padding(top = 28.dp)) {
-        TopBar(title = "Advanced legacy", onBack = onBack)
-        StatusBanner(
-            title = "Shizuku is optional",
-            sub = "Shizuku is not required for Focus Mode assistant. The current Pixel Focus Mode flow uses Accessibility screen automation.",
-            kind = BannerKind.Info,
-        )
-        Spacer(Modifier.height(24.dp))
-        SettingsRow(label = "Legacy Shizuku status", value = shizukuLabel(state.shizukuStatus))
-        SettingsRow(label = "Installed", value = if (state.shizukuStatus == ShizukuStatus.NotInstalled) "No" else "Yes")
-        SettingsRow(
-            label = "Running",
-            value = if (state.shizukuStatus == ShizukuStatus.NotInstalled || state.shizukuStatus == ShizukuStatus.NotRunning) "No" else "Yes",
-        )
-        SettingsRow(label = "Permission", value = if (state.shizukuStatus == ShizukuStatus.Ready) "Granted" else "Not granted")
-        Spacer(Modifier.height(24.dp))
-        SectionLabel("Legacy actions")
-        ActionLine(
-            text = "Open Shizuku",
-            sub = "Optional legacy root experiment; not used by Focus Mode assistant.",
-            enabled = state.shizukuStatus != ShizukuStatus.NotInstalled,
-            onClick = onOpenShizuku,
-        )
-        ActionLine(
-            text = "Request Shizuku permission",
-            sub = "Optional legacy permission; not needed for Pixel Focus Mode automation.",
-            enabled = state.shizukuStatus == ShizukuStatus.PermissionRequired,
-            onClick = onRequestPermission,
-        )
-        Spacer(Modifier.height(24.dp))
-        SectionLabel("Legacy downloads")
-        ActionLine(
-            text = "Official download page",
-            sub = "Optional; only for legacy root experiments.",
-            onClick = onOpenShizukuDownload,
-        )
-        ActionLine(
-            text = "Google Play",
-            sub = "Optional Shizuku install source.",
-            onClick = onOpenShizukuPlayStore,
-        )
-        ActionLine(
-            text = "GitHub Release APK",
-            sub = "Optional fallback if Play is unavailable or outdated.",
-            onClick = onOpenShizukuGitHubRelease,
-        )
     }
 }
 
@@ -1267,12 +1130,10 @@ private fun Route.horizontalPosition(): Int {
         Route.Home -> 0
         Route.Apps -> 1
         Route.Onboarding,
-        Route.Search,
         Route.Category,
         Route.Distracting,
         Route.Settings,
-        Route.Hidden,
-        Route.Shizuku -> 1
+        Route.Hidden -> 1
     }
 }
 
@@ -1312,13 +1173,4 @@ private fun String.compactFailureSummary(maxLines: Int = 2): String {
         .toList()
     if (lines.size <= maxLines) return lines.joinToString("\n")
     return lines.take(maxLines).joinToString("\n") + "\n+ ${lines.size - maxLines} more"
-}
-
-private fun shizukuLabel(status: ShizukuStatus): String {
-    return when (status) {
-        ShizukuStatus.NotInstalled -> "Shizuku not installed"
-        ShizukuStatus.NotRunning -> "Shizuku not running"
-        ShizukuStatus.PermissionRequired -> "Permission not granted"
-        ShizukuStatus.Ready -> "Shizuku ready"
-    }
 }

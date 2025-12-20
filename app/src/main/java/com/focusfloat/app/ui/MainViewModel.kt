@@ -36,10 +36,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Locale
 
-private const val SHIZUKU_DOWNLOAD_URL = "https://shizuku.rikka.app/download/"
-private const val SHIZUKU_GITHUB_RELEASES_URL = "https://github.com/RikkaApps/Shizuku/releases"
-private const val SHIZUKU_PLAY_PACKAGE = "moe.shizuku.privileged.api"
-private const val SHIZUKU_PLAY_WEB_URL = "https://play.google.com/store/apps/details?id=$SHIZUKU_PLAY_PACKAGE"
 private val LABEL_WHITESPACE = Regex("\\s+")
 
 data class MainUiState(
@@ -401,34 +397,6 @@ class MainViewModel(
         }
     }
 
-    fun requestShizukuPermission() {
-        container.shizukuPauseExecutor.requestPermission()
-        refresh()
-    }
-
-    fun openShizuku() {
-        container.shizukuPauseExecutor.openShizuku()
-    }
-
-    fun openShizukuDownload() {
-        openUrl(SHIZUKU_DOWNLOAD_URL, "Could not open Shizuku download")
-    }
-
-    fun openShizukuGitHubRelease() {
-        openUrl(SHIZUKU_GITHUB_RELEASES_URL, "Could not open Shizuku GitHub releases")
-    }
-
-    fun openShizukuPlayStore() {
-        val marketIntent = Intent(Intent.ACTION_VIEW, "market://details?id=$SHIZUKU_PLAY_PACKAGE".toUri())
-            .setPackage("com.android.vending")
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        val webIntent = Intent(Intent.ACTION_VIEW, SHIZUKU_PLAY_WEB_URL.toUri())
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        runCatching { container.appContext.startActivity(marketIntent) }
-            .recoverCatching { container.appContext.startActivity(webIntent) }
-            .onFailure { banner.value = UiBanner("Could not open Google Play", it.message, failed = true) }
-    }
-
     fun openAccessibilitySettings() {
         val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -529,13 +497,6 @@ class MainViewModel(
         val scale = battery.getIntExtra(BatteryManager.EXTRA_SCALE, -1)
         if (level < 0 || scale <= 0) return null
         return (level.toFloat() / scale.toFloat()).coerceIn(0f, 1f)
-    }
-
-    private fun openUrl(url: String, failureTitle: String) {
-        val intent = Intent(Intent.ACTION_VIEW, url.toUri())
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        runCatching { container.appContext.startActivity(intent) }
-            .onFailure { banner.value = UiBanner(failureTitle, it.message, failed = true) }
     }
 
     private suspend fun refreshPauseSetupState() {
