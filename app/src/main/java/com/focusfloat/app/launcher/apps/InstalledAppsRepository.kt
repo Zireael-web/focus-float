@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.update
 import java.time.Instant
 
 interface InstalledAppsRepository {
@@ -42,6 +43,25 @@ class AndroidInstalledAppsRepository(
     private val userResolver = UserResolver(context)
     private val refreshTick = MutableStateFlow(0)
 
+    init {
+        launcherApps.registerCallback(object : LauncherApps.Callback() {
+            override fun onPackageAdded(packageName: String, user: UserHandle) = refreshFromPackageCallback()
+            override fun onPackageRemoved(packageName: String, user: UserHandle) = refreshFromPackageCallback()
+            override fun onPackageChanged(packageName: String, user: UserHandle) = refreshFromPackageCallback()
+            override fun onPackagesAvailable(
+                packageNames: Array<out String>,
+                user: UserHandle,
+                replacing: Boolean,
+            ) = refreshFromPackageCallback()
+
+            override fun onPackagesUnavailable(
+                packageNames: Array<out String>,
+                user: UserHandle,
+                replacing: Boolean,
+            ) = refreshFromPackageCallback()
+        })
+    }
+
     override fun observeApps(): Flow<List<AppEntry>> {
         return combine(
             refreshTick,
@@ -58,11 +78,18 @@ class AndroidInstalledAppsRepository(
                     }
                 }
 
-            loadLaunchableApps().map { launchable ->
+            val launchableApps = loadLaunchableApps()
+            val protectedPackages = ProtectedPackages.protectedSet(context, launchableApps.map { it.packageName })
+            val suspendedByRef = launchableApps
+                .map { AppRef(it.packageName, it.userSerial) }
+                .distinct()
+                .associateWith { appRef -> packageStateReader.isSuspended(appRef.packageName, appRef.userSerial) }
+
+            launchableApps.map { launchable ->
                 val appRef = AppRef(launchable.packageName, launchable.userSerial)
                 val override = overrideByRef[appRef]
                 val pausedUntil = activePausedUntil[appRef]
-                val isActuallyPaused = packageStateReader.isSuspended(launchable.packageName, launchable.userSerial)
+                val isActuallyPaused = suspendedByRef[appRef] == true
                 AppEntry(
                     key = AppKey(
                         packageName = launchable.packageName,
@@ -76,7 +103,7 @@ class AndroidInstalledAppsRepository(
                     isHidden = override?.hidden ?: false,
                     isPaused = pausedUntil != null || isActuallyPaused,
                     pausedUntil = pausedUntil,
-                    isProtected = ProtectedPackages.isProtected(launchable.packageName, context),
+                    isProtected = launchable.packageName in protectedPackages,
                 )
             }
                 .sortedWith(compareBy<AppEntry> { it.displayLabel.lowercase() }.thenBy { it.key.packageName })
@@ -84,7 +111,7 @@ class AndroidInstalledAppsRepository(
     }
 
     override suspend fun refreshApps() {
-        refreshTick.value = refreshTick.value + 1
+        refreshFromPackageCallback()
     }
 
     override suspend fun launch(app: AppEntry) {
@@ -155,6 +182,10 @@ class AndroidInstalledAppsRepository(
         val label: String,
         val userSerial: Long,
     )
+
+    private fun refreshFromPackageCallback() {
+        refreshTick.update { it + 1 }
+    }
 
     private companion object {
         val activeStatuses = setOf(
