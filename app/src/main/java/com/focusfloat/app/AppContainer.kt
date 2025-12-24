@@ -2,6 +2,7 @@ package com.focusfloat.app
 
 import android.content.Context
 import androidx.room.Room
+import com.focusfloat.app.core.time.FreshSystemDefaultZoneClock
 import com.focusfloat.app.data.FocusFloatDatabase
 import com.focusfloat.app.digitalwellbeing.AccessibilityServiceStatus
 import com.focusfloat.app.digitalwellbeing.DigitalWellbeingAutomationStore
@@ -28,7 +29,7 @@ import java.time.Clock
 
 class AppContainer(context: Context) {
     val appContext: Context = context.applicationContext
-    private val clock: Clock = Clock.systemDefaultZone()
+    private val clock: Clock = FreshSystemDefaultZoneClock()
 
     val database: FocusFloatDatabase = Room.databaseBuilder(
         appContext,
