@@ -33,19 +33,29 @@ object ProtectedPackages {
 
     fun isProtected(packageName: String, context: Context): Boolean {
         if (packageName in hardcoded(context)) return true
-        if (isHomeLauncher(packageName, context)) return true
-        if (isDefaultInputMethod(packageName, context)) return true
-        if (isDefaultDialer(packageName, context)) return true
-        if (isDefaultSms(packageName, context)) return true
+        if (packageName in homeLauncherPackages(context)) return true
+        if (packageName == defaultInputMethodPackage(context)) return true
+        if (packageName == defaultDialerPackage(context)) return true
+        if (packageName == defaultSmsPackage(context)) return true
         return false
     }
 
-    private fun isHomeLauncher(packageName: String, context: Context): Boolean {
+    fun protectedSet(context: Context, packageNames: Collection<String>): Set<String> {
+        val candidates = packageNames.toSet()
+        return buildSet {
+            addAll(hardcoded(context).filter { it in candidates })
+            addAll(homeLauncherPackages(context).filter { it in candidates })
+            defaultInputMethodPackage(context)?.takeIf { it in candidates }?.let(::add)
+            defaultDialerPackage(context)?.takeIf { it in candidates }?.let(::add)
+            defaultSmsPackage(context)?.takeIf { it in candidates }?.let(::add)
+        }
+    }
+
+    private fun homeLauncherPackages(context: Context): Set<String> {
         val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
         val current = context.packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)
             ?.activityInfo
-            ?.packageName == packageName
-        if (current) return true
+            ?.packageName
 
         val homeCandidates = if (Build.VERSION.SDK_INT >= 33) {
             context.packageManager.queryIntentActivities(
@@ -56,24 +66,27 @@ object ProtectedPackages {
             @Suppress("DEPRECATION")
             context.packageManager.queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY)
         }
-        return homeCandidates.any { it.activityInfo?.packageName == packageName }
+        return buildSet {
+            current?.let(::add)
+            homeCandidates.mapNotNullTo(this) { it.activityInfo?.packageName }
+        }
     }
 
-    private fun isDefaultInputMethod(packageName: String, context: Context): Boolean {
+    private fun defaultInputMethodPackage(context: Context): String? {
         return runCatching {
             Settings.Secure.getString(context.contentResolver, Settings.Secure.DEFAULT_INPUT_METHOD)
                 ?.substringBefore("/")
-                ?.takeIf { it.isNotBlank() } == packageName
-        }.getOrDefault(false)
+                ?.takeIf { it.isNotBlank() }
+        }.getOrNull()
     }
 
-    private fun isDefaultDialer(packageName: String, context: Context): Boolean {
+    private fun defaultDialerPackage(context: Context): String? {
         return runCatching {
-            context.getSystemService(TelecomManager::class.java).defaultDialerPackage == packageName
-        }.getOrDefault(false)
+            context.getSystemService(TelecomManager::class.java).defaultDialerPackage
+        }.getOrNull()
     }
 
-    private fun isDefaultSms(packageName: String, context: Context): Boolean {
-        return runCatching { Telephony.Sms.getDefaultSmsPackage(context) == packageName }.getOrDefault(false)
+    private fun defaultSmsPackage(context: Context): String? {
+        return runCatching { Telephony.Sms.getDefaultSmsPackage(context) }.getOrNull()
     }
 }
