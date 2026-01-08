@@ -85,6 +85,9 @@ private fun Context.focusFloatHasHomeRole(): Boolean {
         val roleManager = getSystemService(RoleManager::class.java)
         roleManager.isRoleAvailable(RoleManager.ROLE_HOME) && roleManager.isRoleHeld(RoleManager.ROLE_HOME)
     } else {
-        false
+        val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
+        packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)
+            ?.activityInfo
+            ?.packageName == packageName
     }
 }

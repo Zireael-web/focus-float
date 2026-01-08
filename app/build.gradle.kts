@@ -19,6 +19,14 @@ fun signingValue(propertyName: String, envName: String): String? {
         ?: System.getenv(envName)?.takeIf { it.isNotBlank() }
 }
 
+val internalStoreFilePath = signingValue("internalStoreFile", "FOCUSFLOAT_INTERNAL_STORE_FILE")
+    ?: "keystores/focusfloat-internal.jks"
+val internalStorePassword = signingValue("internalStorePassword", "FOCUSFLOAT_INTERNAL_STORE_PASSWORD")
+val internalKeyAlias = signingValue("internalKeyAlias", "FOCUSFLOAT_INTERNAL_KEY_ALIAS")
+val internalKeyPassword = signingValue("internalKeyPassword", "FOCUSFLOAT_INTERNAL_KEY_PASSWORD")
+val hasInternalSigningCredentials = rootProject.file(internalStoreFilePath).isFile &&
+    listOf(internalStorePassword, internalKeyAlias, internalKeyPassword).all { !it.isNullOrBlank() }
+
 android {
     namespace = "com.focusfloat.app"
     compileSdk = 36
@@ -35,13 +43,10 @@ android {
 
     signingConfigs {
         create("internal") {
-            storeFile = rootProject.file(
-                signingValue("internalStoreFile", "FOCUSFLOAT_INTERNAL_STORE_FILE")
-                    ?: "keystores/focusfloat-internal.jks",
-            )
-            storePassword = signingValue("internalStorePassword", "FOCUSFLOAT_INTERNAL_STORE_PASSWORD")
-            keyAlias = signingValue("internalKeyAlias", "FOCUSFLOAT_INTERNAL_KEY_ALIAS")
-            keyPassword = signingValue("internalKeyPassword", "FOCUSFLOAT_INTERNAL_KEY_PASSWORD")
+            storeFile = rootProject.file(internalStoreFilePath)
+            storePassword = internalStorePassword
+            keyAlias = internalKeyAlias
+            keyPassword = internalKeyPassword
         }
     }
 
@@ -57,7 +62,11 @@ android {
             matchingFallbacks += listOf("debug")
         }
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            if (hasInternalSigningCredentials) {
+                signingConfig = signingConfigs.getByName("internal")
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
