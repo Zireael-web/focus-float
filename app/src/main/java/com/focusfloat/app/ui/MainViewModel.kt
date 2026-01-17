@@ -28,6 +28,7 @@ import com.focusfloat.app.settings.FocusSettings
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
@@ -37,6 +38,9 @@ import kotlinx.coroutines.launch
 import java.util.Locale
 
 private val LABEL_WHITESPACE = Regex("\\s+")
+private const val MINUTE_MS = 60_000L
+private const val AUTOMATION_RUNNING_POLL_MS = 1_000L
+private const val AUTOMATION_IDLE_POLL_MS = 5_000L
 
 data class MainUiState(
     val settings: FocusSettings? = null,
@@ -126,7 +130,7 @@ class MainViewModel(
     private val timeTicker = flow {
         while (true) {
             emit(Unit)
-            delay(30_000)
+            delay(MINUTE_MS - (System.currentTimeMillis() % MINUTE_MS))
         }
     }
 
@@ -195,9 +199,13 @@ class MainViewModel(
     init {
         viewModelScope.launch {
             val defaultCategoryId = container.categoryRepository.ensureDefaultPauseCategory()
-            container.settingsRepository.setPrimaryPauseCategoryId(defaultCategoryId)
-            launch { autoImportSystemPausedApps(defaultCategoryId) }
-            container.categoryRepository.observeCategoryItems(defaultCategoryId).collect {
+            val settings = container.settingsRepository.settings.first()
+            val categories = container.categoryRepository.observeCategories().first()
+            val primaryCategoryId = settings.primaryPauseCategoryId
+                ?.takeIf { id -> categories.any { it.id == id } }
+                ?: defaultCategoryId.also { container.settingsRepository.setPrimaryPauseCategoryId(it) }
+            launch { autoImportSystemPausedApps(primaryCategoryId) }
+            container.categoryRepository.observeCategoryItems(primaryCategoryId).collect {
                 categoryPackages.value = it
             }
         }
@@ -212,9 +220,16 @@ class MainViewModel(
             refresh()
         }
         viewModelScope.launch {
-            while (true) {
-                delay(1_000)
-                refreshDigitalWellbeingAutomationStatus()
+            digitalWellbeingAutomationStatus.collectLatest { status ->
+                val pollDelayMs = if (status.state == DigitalWellbeingAutomationState.Running) {
+                    AUTOMATION_RUNNING_POLL_MS
+                } else {
+                    AUTOMATION_IDLE_POLL_MS
+                }
+                while (true) {
+                    delay(pollDelayMs)
+                    refreshDigitalWellbeingAutomationStatus()
+                }
             }
         }
     }

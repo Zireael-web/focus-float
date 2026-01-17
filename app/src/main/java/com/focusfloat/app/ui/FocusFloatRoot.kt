@@ -161,11 +161,10 @@ fun FocusFloatRoot(
                     .horizontalRouteSwipe(
                         enabled = swipeEnabled,
                         routeKey = route,
-                        onSwipe = {
-                            when (route) {
-                                Route.Home -> openAppsRoute()
-                                Route.Apps -> navigateBack()
-                                else -> Unit
+                        onSwipe = { deltaX ->
+                            when {
+                                route == Route.Home && deltaX < 0f -> openAppsRoute()
+                                route == Route.Apps && deltaX > 0f -> navigateBack()
                             }
                         },
                     )
@@ -394,7 +393,7 @@ private fun HomeScreen(
 
         Spacer(Modifier.weight(1f))
 
-        state.favorites.forEach { app ->
+        state.favorites.take(MAX_HOME_FAVORITES).forEach { app ->
             AppTextRow(
                 name = app.displayLabel,
                 state = if (app.isPaused) AppRowState.Paused else AppRowState.Normal,
@@ -1140,7 +1139,7 @@ private fun Route.horizontalPosition(): Int {
 private fun Modifier.horizontalRouteSwipe(
     enabled: Boolean,
     routeKey: Any?,
-    onSwipe: () -> Unit,
+    onSwipe: (deltaX: Float) -> Unit,
 ): Modifier {
     if (!enabled) return this
     return pointerInput(enabled, routeKey) {
@@ -1155,7 +1154,7 @@ private fun Modifier.horizontalRouteSwipe(
                     total += change.position - change.previousPosition
                     if (!triggered && abs(total.x) >= HORIZONTAL_SWIPE_THRESHOLD_PX && abs(total.x) > abs(total.y) * 1.2f) {
                         triggered = true
-                        onSwipe()
+                        onSwipe(total.x)
                     }
                 }
             } while (!triggered && event.changes.any { it.pressed })
@@ -1165,6 +1164,7 @@ private fun Modifier.horizontalRouteSwipe(
 
 private const val ROUTE_ANIMATION_MS = 220
 private const val HORIZONTAL_SWIPE_THRESHOLD_PX = 80f
+private const val MAX_HOME_FAVORITES = 8
 
 private fun String.compactFailureSummary(maxLines: Int = 2): String {
     val lines = lineSequence()
