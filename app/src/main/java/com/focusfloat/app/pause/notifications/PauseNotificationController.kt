@@ -131,12 +131,13 @@ class PauseNotificationController(private val context: Context) {
     }
 
     private fun exactAlarmSettingsIntent(): Intent {
-        return if (Build.VERSION.SDK_INT >= 31) {
+        val intent = if (Build.VERSION.SDK_INT >= 31) {
             Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)
                 .setData(Uri.parse("package:${context.packageName}"))
         } else {
             Intent(Settings.ACTION_SETTINGS)
         }
+        return intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     }
 
     private fun defaultActions(): List<NotificationAction> = listOf(

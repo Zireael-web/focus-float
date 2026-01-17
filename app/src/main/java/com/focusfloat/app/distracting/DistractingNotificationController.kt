@@ -59,6 +59,7 @@ class DistractingNotificationController(private val context: Context) {
 
     private fun openFocusFloatIntent(): PendingIntent {
         val intent = Intent(context, MainActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         return PendingIntent.getActivity(
             context,
             31_001,

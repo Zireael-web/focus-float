@@ -20,6 +20,7 @@ class DistractingGateAccessibilityService : AccessibilityService() {
     private val reducer = DistractingGateEventReducer()
     private var distractingRefs: Set<AppRef> = emptySet()
     private var labelsByRef: Map<AppRef, String> = emptyMap()
+    private var classNamesByRef: Map<AppRef, String> = emptyMap()
     private var defaultInputMethodPackage: String? = null
     private var defaultInputMethodPackageLoaded = false
 
@@ -34,10 +35,15 @@ class DistractingGateAccessibilityService : AccessibilityService() {
                 container.categoryRepository.observeCategoryItems(distractingCategoryId),
                 container.installedAppsRepository.observeApps(),
             ) { refs, apps ->
-                refs.toSet() to apps.associateLabels()
-            }.collect { (refs, labels) ->
-                distractingRefs = refs
-                labelsByRef = labels
+                AppsSnapshot(
+                    distractingRefs = refs.toSet(),
+                    labelsByRef = apps.associateLabels(),
+                    classNamesByRef = apps.associateClassNames(),
+                )
+            }.collect { snapshot ->
+                distractingRefs = snapshot.distractingRefs
+                labelsByRef = snapshot.labelsByRef
+                classNamesByRef = snapshot.classNamesByRef
             }
         }
     }
@@ -68,6 +74,14 @@ class DistractingGateAccessibilityService : AccessibilityService() {
         return associate { it.key.ref to it.displayLabel }
     }
 
+    private fun List<AppEntry>.associateClassNames(): Map<AppRef, String> {
+        return mapNotNull { app ->
+            app.key.className?.takeIf { it.isNotBlank() }?.let { className ->
+                app.key.ref to className
+            }
+        }.toMap()
+    }
+
     private fun applyAction(action: DistractingGateAction) {
         val container = (application as FocusFloatApplication).container
         when (action) {
@@ -86,6 +100,7 @@ class DistractingGateAccessibilityService : AccessibilityService() {
                     .putExtra(DistractingGateActivity.EXTRA_PACKAGE_NAME, action.ref.packageName)
                     .putExtra(DistractingGateActivity.EXTRA_APP_LABEL, action.label)
                     .putExtra(DistractingGateActivity.EXTRA_USER_SERIAL, action.ref.userSerial)
+                    .putExtra(DistractingGateActivity.EXTRA_CLASS_NAME, classNamesByRef[action.ref])
                 runCatching { startActivity(intent) }
             }
         }
@@ -128,4 +143,10 @@ class DistractingGateAccessibilityService : AccessibilityService() {
             "com.google.android.inputmethod.latin",
         )
     }
+
+    private data class AppsSnapshot(
+        val distractingRefs: Set<AppRef>,
+        val labelsByRef: Map<AppRef, String>,
+        val classNamesByRef: Map<AppRef, String>,
+    )
 }
