@@ -9,12 +9,15 @@ import com.focusfloat.app.FocusFloatApplication
 class DigitalWellbeingAutomationAccessibilityService : AccessibilityService() {
     private lateinit var automator: DigitalWellbeingUiAutomator
     private val handler = Handler(Looper.getMainLooper())
+    private var idlePulseCount = 0
     private val automationPulse = object : Runnable {
         override fun run() {
-            if (::automator.isInitialized) {
+            val hasActiveRequest = if (::automator.isInitialized) {
                 automator.handleEvent(null)
+            } else {
+                false
             }
-            handler.postDelayed(this, AUTOMATION_PULSE_MS)
+            scheduleNextPulse(hasActiveRequest)
         }
     }
 
@@ -22,13 +25,19 @@ class DigitalWellbeingAutomationAccessibilityService : AccessibilityService() {
         super.onServiceConnected()
         val container = (application as FocusFloatApplication).container
         automator = DigitalWellbeingUiAutomator(this, container.digitalWellbeingAutomationStore)
+        idlePulseCount = 0
         handler.removeCallbacks(automationPulse)
         handler.post(automationPulse)
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (::automator.isInitialized) {
-            automator.handleEvent(event)
+            val hasActiveRequest = automator.handleEvent(event)
+            if (hasActiveRequest) {
+                idlePulseCount = 0
+                handler.removeCallbacks(automationPulse)
+                handler.postDelayed(automationPulse, ACTIVE_AUTOMATION_PULSE_MS)
+            }
         }
     }
 
@@ -39,7 +48,23 @@ class DigitalWellbeingAutomationAccessibilityService : AccessibilityService() {
         super.onDestroy()
     }
 
+    private fun scheduleNextPulse(hasActiveRequest: Boolean) {
+        if (hasActiveRequest) {
+            idlePulseCount = 0
+        } else {
+            idlePulseCount = (idlePulseCount + 1).coerceAtMost(IDLE_PULSES_BEFORE_SLOW)
+        }
+        val delayMs = if (idlePulseCount >= IDLE_PULSES_BEFORE_SLOW) {
+            IDLE_AUTOMATION_PULSE_MS
+        } else {
+            ACTIVE_AUTOMATION_PULSE_MS
+        }
+        handler.postDelayed(automationPulse, delayMs)
+    }
+
     private companion object {
-        const val AUTOMATION_PULSE_MS = 700L
+        const val ACTIVE_AUTOMATION_PULSE_MS = 700L
+        const val IDLE_AUTOMATION_PULSE_MS = 2_500L
+        const val IDLE_PULSES_BEFORE_SLOW = 3
     }
 }

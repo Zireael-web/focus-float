@@ -17,8 +17,8 @@ class DigitalWellbeingUiAutomator(
     private var nonAutomationWindowSince = 0L
     private var lastStepAt = 0L
 
-    fun handleEvent(event: AccessibilityEvent?) {
-        val request = store.activeRequest() ?: return
+    fun handleEvent(event: AccessibilityEvent?): Boolean {
+        val request = store.activeRequest() ?: return false
         if (activeRequestId != request.id) {
             resetForRequest(request.id)
         }
@@ -26,6 +26,7 @@ class DigitalWellbeingUiAutomator(
         val root = service.rootInActiveWindow
         val eventPackage = event?.packageName?.toString()
         val rootPackage = root?.packageName?.toString()
+        val activeWindowPackage = eventPackage ?: rootPackage
         val isInAutomationPackage = eventPackage.isAutomationPackage() || rootPackage.isAutomationPackage()
         val now = SystemClock.elapsedRealtime()
 
@@ -33,7 +34,7 @@ class DigitalWellbeingUiAutomator(
             hasEnteredAutomationPackage = true
             nonAutomationWindowSince = 0L
         } else {
-            if (hasEnteredAutomationPackage && !eventPackage.isIgnoredExternalPackage()) {
+            if (hasEnteredAutomationPackage && (root == null || !activeWindowPackage.isIgnoredExternalPackage())) {
                 if (nonAutomationWindowSince == 0L) nonAutomationWindowSince = now
                 if (now - nonAutomationWindowSince >= LEAVE_GRACE_MS) {
                     fail(
@@ -43,12 +44,12 @@ class DigitalWellbeingUiAutomator(
                     )
                 }
             }
-            return
+            return true
         }
 
-        if (root == null || !rootPackage.isAutomationPackage()) return
+        if (root == null || !rootPackage.isAutomationPackage()) return true
 
-        if (now - lastStepAt < STEP_DEBOUNCE_MS) return
+        if (now - lastStepAt < STEP_DEBOUNCE_MS) return true
         lastStepAt = now
 
         val automationRoot = AccessibilityNodeAutomationNode(root)
@@ -61,6 +62,7 @@ class DigitalWellbeingUiAutomator(
         }.onFailure { error ->
             fail(request, error.message ?: "Focus Mode assistant failed", automationRoot)
         }
+        return true
     }
 
     private fun resetForRequest(requestId: String) {
