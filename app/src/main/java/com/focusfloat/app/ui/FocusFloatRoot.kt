@@ -888,10 +888,11 @@ private fun AppActionsSheet(
                 if (inPrimaryCategory) "Remove from pause list" else "Add to pause list",
                 onToggleCategory,
             )
-            SheetAction(
-                if (inDistractingCategory) "Remove from Distracting apps" else "Add to Distracting apps",
-                onToggleDistracting,
-            )
+            if (inDistractingCategory) {
+                SheetAction("Remove from Distracting apps", onToggleDistracting)
+            } else if (!app.isPaused) {
+                SheetAction("Add to Distracting apps", onToggleDistracting)
+            }
         }
         SheetAction("App info", onAppInfo)
     }

@@ -462,9 +462,11 @@ class MainViewModel(
             banner.value = UiBanner("Package is protected", "${app.displayLabel} cannot be added to Distracting apps.")
             return
         }
+        if (app.isPaused) {
+            return
+        }
         viewModelScope.launch {
             container.categoryRepository.addPackage(categoryId, app.key.packageName, app.key.userSerial)
-            banner.value = UiBanner("${app.displayLabel} added to Distracting apps")
         }
     }
 
@@ -472,7 +474,6 @@ class MainViewModel(
         val categoryId = uiState.value.distractingCategory?.id ?: return
         viewModelScope.launch {
             container.categoryRepository.removePackage(categoryId, app.key.packageName, app.key.userSerial)
-            banner.value = UiBanner("${app.displayLabel} removed from Distracting apps")
         }
     }
 
