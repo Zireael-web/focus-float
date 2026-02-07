@@ -83,6 +83,7 @@ private enum class Route {
     Onboarding,
     Home,
     Apps,
+    Favorites,
     Category,
     Distracting,
     Settings,
@@ -102,12 +103,23 @@ fun FocusFloatRoot(
     var renameTarget by remember { mutableStateOf<AppEntry?>(null) }
     var distractingGateApp by remember { mutableStateOf<AppEntry?>(null) }
     var addAppsReturnRoute by rememberSaveable { mutableStateOf<Route?>(null) }
+    var listReturnRoute by rememberSaveable { mutableStateOf(Route.Home) }
     val settings = state.settings
     val onboardingRequired = settings?.onboardingCompleted == false
 
     fun openAppsRoute() {
         addAppsReturnRoute = null
         route = Route.Apps
+    }
+
+    fun openFavoritesRoute(returnRoute: Route = Route.Home) {
+        listReturnRoute = returnRoute
+        route = Route.Favorites
+    }
+
+    fun openDistractingRoute(returnRoute: Route = Route.Home) {
+        listReturnRoute = returnRoute
+        route = Route.Distracting
     }
 
     fun requestOpenApp(app: AppEntry) {
@@ -129,7 +141,11 @@ fun FocusFloatRoot(
                 addAppsReturnRoute = null
             }
             Route.Category -> route = Route.Home
-            Route.Distracting,
+            Route.Favorites,
+            Route.Distracting -> {
+                route = listReturnRoute
+                listReturnRoute = Route.Home
+            }
             Route.Hidden,
             Route.Onboarding -> route = Route.Settings
             Route.Settings -> route = Route.Home
@@ -211,8 +227,10 @@ fun FocusFloatRoot(
                         targetRoute == Route.Home -> HomeScreen(
                             state = state,
                             onOpenApps = ::openAppsRoute,
+                            onOpenFavorites = { openFavoritesRoute() },
                             onOpenSettings = { route = Route.Settings },
                             onOpenCategory = { route = Route.Category },
+                            onOpenDistracting = { openDistractingRoute() },
                             onUnpause = actions::unpausePrimaryCategory,
                             onLaunchApp = { requestOpenApp(it) },
                         )
@@ -222,6 +240,15 @@ fun FocusFloatRoot(
                             onBack = ::navigateBack,
                             onAppClick = { selectedApp = it },
                             onOpenSettings = { route = Route.Settings },
+                        )
+                        targetRoute == Route.Favorites -> FavoritesScreen(
+                            state = state,
+                            onBack = ::navigateBack,
+                            onAppClick = { selectedApp = it },
+                            onAddApps = {
+                                addAppsReturnRoute = Route.Favorites
+                                route = Route.Apps
+                            },
                         )
                         targetRoute == Route.Category -> CategoryScreen(
                             state = state,
@@ -252,9 +279,10 @@ fun FocusFloatRoot(
                             state = state,
                             onBack = ::navigateBack,
                             onSetAsHome = onSetAsHome,
+                            onOpenFavorites = { openFavoritesRoute(Route.Settings) },
                             onOpenHidden = { route = Route.Hidden },
                             onOpenOnboarding = { route = Route.Onboarding },
-                            onOpenDistracting = { route = Route.Distracting },
+                            onOpenDistracting = { openDistractingRoute(Route.Settings) },
                             onOpenAccessibilitySettings = actions::openAccessibilitySettings,
                         )
                         targetRoute == Route.Hidden -> HiddenAppsScreen(
@@ -368,8 +396,10 @@ private fun LoadingScreen() {
 private fun HomeScreen(
     state: MainUiState,
     onOpenApps: () -> Unit,
+    onOpenFavorites: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenCategory: () -> Unit,
+    onOpenDistracting: () -> Unit,
     onUnpause: () -> Unit,
     onLaunchApp: (AppEntry) -> Unit,
 ) {
@@ -422,7 +452,9 @@ private fun HomeScreen(
 
         Spacer(Modifier.height(16.dp))
         ActionLine(text = "All apps", sub = "${state.visibleApps.size} apps", onClick = onOpenApps)
+        ActionLine(text = "Favorite apps", sub = "${state.favorites.size} apps", onClick = onOpenFavorites)
         ActionLine(text = "Paused apps", sub = state.pauseListSubtitle(), onClick = onOpenCategory)
+        ActionLine(text = "Distracting apps", sub = "${state.distractingApps.size} apps", onClick = onOpenDistracting)
     }
 }
 
@@ -677,6 +709,44 @@ private fun AppsScreen(
 }
 
 @Composable
+private fun FavoritesScreen(
+    state: MainUiState,
+    onBack: () -> Unit,
+    onAppClick: (AppEntry) -> Unit,
+    onAddApps: () -> Unit,
+) {
+    val apps = state.favorites
+    Column(Modifier.fillMaxSize().padding(top = 28.dp, bottom = 22.dp)) {
+        TopBar(title = "Favorite apps", onBack = onBack)
+        Text(
+            text = "${apps.size} apps",
+            color = FocusTheme.colors.text2,
+            style = FocusTheme.type.body,
+            modifier = Modifier.padding(horizontal = FocusTheme.spacing.screenPad),
+        )
+        Spacer(Modifier.height(20.dp))
+        if (apps.isEmpty()) {
+            Box(modifier = Modifier.weight(1f)) {
+                EmptyLine("No favorite apps")
+            }
+        } else {
+            LazyColumn(modifier = Modifier.weight(1f)) {
+                items(apps, key = { it.lazyListKey() }) { app ->
+                    AppTextRow(
+                        name = app.displayLabel,
+                        state = app.rowState(),
+                        meta = app.meta(),
+                        favorite = true,
+                        onClick = { onAppClick(app) },
+                    )
+                }
+            }
+        }
+        ActionLine(text = "Add apps", onClick = onAddApps)
+    }
+}
+
+@Composable
 private fun CategoryScreen(
     state: MainUiState,
     onBack: () -> Unit,
@@ -800,6 +870,7 @@ private fun SettingsScreen(
     state: MainUiState,
     onBack: () -> Unit,
     onSetAsHome: () -> Unit,
+    onOpenFavorites: () -> Unit,
     onOpenHidden: () -> Unit,
     onOpenOnboarding: () -> Unit,
     onOpenDistracting: () -> Unit,
@@ -809,7 +880,7 @@ private fun SettingsScreen(
         TopBar(title = "Settings", onBack = onBack)
         SettingsRow(label = "Set as home screen", onClick = onSetAsHome)
         SettingsRow(label = "Setup guide", sub = "Home, assistant, and pause list", onClick = onOpenOnboarding)
-        SettingsRow(label = "Favorites", sub = "${state.favorites.size} apps")
+        SettingsRow(label = "Favorites", sub = "${state.favorites.size} apps", onClick = onOpenFavorites)
         SettingsRow(label = "Hidden apps", sub = "${state.hiddenApps.size} apps", onClick = onOpenHidden)
         SettingsRow(label = "Pause list", sub = state.primaryCategory?.name ?: "Paused apps")
         SettingsRow(label = "Distracting apps", sub = "${state.distractingApps.size} apps", onClick = onOpenDistracting)
@@ -1119,6 +1190,7 @@ private fun Route.horizontalPosition(): Int {
         Route.Home -> 0
         Route.Apps -> 1
         Route.Onboarding,
+        Route.Favorites,
         Route.Category,
         Route.Distracting,
         Route.Settings,
