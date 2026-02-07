@@ -698,17 +698,6 @@ private fun CategoryScreen(
             modifier = Modifier.padding(horizontal = FocusTheme.spacing.screenPad),
         )
         Spacer(Modifier.height(20.dp))
-        if (session == null && androidPausedApps > 0) {
-            StatusBanner(
-                title = "$androidPausedApps ${appCountLabel(androidPausedApps)} paused by Android",
-                sub = "Paused outside FocusFloat. Pixel Focus Mode checkboxes may still be empty.",
-                subMaxLines = 3,
-                action = "Refresh status",
-                kind = BannerKind.Info,
-                onAction = onRefresh,
-            )
-            Spacer(Modifier.height(12.dp))
-        }
         LazyColumn(modifier = Modifier.weight(1f)) {
             items(state.primaryCategoryApps, key = { it.lazyListKey() }) { app ->
                 AppTextRow(
