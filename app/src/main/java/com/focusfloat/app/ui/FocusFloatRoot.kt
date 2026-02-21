@@ -421,7 +421,7 @@ private fun HomeScreen(
 
         Spacer(Modifier.weight(1f))
 
-        PauseHomeBlock(state, onUnpause, onOpenCategory)
+        PauseHomeBlock(state, onUnpause)
 
         if (!state.hasHomePauseStatus()) {
             DigitalWellbeingAutomationBanner(state.digitalWellbeingAutomationStatus)
@@ -584,34 +584,19 @@ private fun OnboardingCopy(title: String, body: String) {
 private fun PauseHomeBlock(
     state: MainUiState,
     onUnpause: () -> Unit,
-    onOpenPausedApps: () -> Unit,
 ) {
     val session = state.activeSession
-    val androidPausedCount = state.primaryCategoryAndroidPausedCount()
-    when {
-        session != null -> {
-            val failed = session.status == PauseSessionStatus.PartiallyFailed ||
-                session.status == PauseSessionStatus.FailedToUnpause
-            StatusBanner(
-                title = pausedAppsTitle(session.packageNames.size, session.pausedUntil, failed),
-                sub = session.failureSummary?.compactFailureSummary(),
-                subMaxLines = 3,
-                action = "Turn off Pixel Focus Mode",
-                kind = if (failed) BannerKind.Failed else BannerKind.Info,
-                onAction = onUnpause,
-            )
-        }
-        androidPausedCount > 0 -> {
-            StatusBanner(
-                title = "$androidPausedCount ${appCountLabel(androidPausedCount)} paused by Android",
-                sub = androidPausedAppsSub(state.digitalWellbeingAutomationStatus),
-                subMaxLines = 3,
-                action = "Review paused apps",
-                kind = BannerKind.Info,
-                onAction = onOpenPausedApps,
-            )
-        }
-    }
+    if (session == null) return
+    val failed = session.status == PauseSessionStatus.PartiallyFailed ||
+        session.status == PauseSessionStatus.FailedToUnpause
+    StatusBanner(
+        title = pausedAppsTitle(session.packageNames.size, session.pausedUntil, failed),
+        sub = session.failureSummary?.compactFailureSummary(),
+        subMaxLines = 3,
+        action = "Turn off Pixel Focus Mode",
+        kind = if (failed) BannerKind.Failed else BannerKind.Info,
+        onAction = onUnpause,
+    )
 }
 
 @Composable
@@ -1095,11 +1080,8 @@ private fun AppEntry.lazyListKey(): String = "${key.packageName}/${key.className
 
 private fun MainUiState.pauseListSubtitle(): String {
     val session = activeSession
-    val androidPausedApps = primaryCategoryAndroidPausedCount()
     return if (session != null) {
         "${session.packageNames.size} ${appCountLabel(session.packageNames.size)} paused"
-    } else if (androidPausedApps > 0) {
-        "$androidPausedApps ${appCountLabel(androidPausedApps)} paused by Android"
     } else if (primaryCategoryPackages.isEmpty()) {
         "No apps in list"
     } else {
@@ -1113,7 +1095,7 @@ private fun MainUiState.primaryCategoryAndroidPausedCount(): Int {
 }
 
 private fun MainUiState.hasHomePauseStatus(): Boolean {
-    return activeSession != null || primaryCategoryAndroidPausedCount() > 0
+    return activeSession != null
 }
 
 private fun MainUiState.pauseListCountLine(): String {
@@ -1124,16 +1106,6 @@ private fun MainUiState.pauseListCountLine(): String {
     } else {
         "${primaryCategoryApps.size} ${appCountLabel(primaryCategoryApps.size)} in list"
     }
-}
-
-private fun androidPausedAppsSub(status: DigitalWellbeingAutomationStatus?): String {
-    val assistantStatus = status
-        ?.takeUnless { it.state == DigitalWellbeingAutomationState.Idle }
-        ?.let { digitalWellbeingAutomationTitle(it) }
-    return listOfNotNull(
-        "Paused outside FocusFloat. Pixel Focus Mode checkboxes may still be empty.",
-        assistantStatus,
-    ).joinToString("\n")
 }
 
 private fun pausedAppsTitle(count: Int, pausedUntil: Instant, failed: Boolean): String {
