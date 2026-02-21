@@ -232,7 +232,6 @@ fun FocusFloatRoot(
                             onOpenCategory = { route = Route.Category },
                             onOpenDistracting = { openDistractingRoute() },
                             onUnpause = actions::unpausePrimaryCategory,
-                            onLaunchApp = { requestOpenApp(it) },
                         )
                         targetRoute == Route.Apps -> AppsScreen(
                             title = "All apps",
@@ -401,7 +400,6 @@ private fun HomeScreen(
     onOpenCategory: () -> Unit,
     onOpenDistracting: () -> Unit,
     onUnpause: () -> Unit,
-    onLaunchApp: (AppEntry) -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -423,17 +421,6 @@ private fun HomeScreen(
 
         Spacer(Modifier.weight(1f))
 
-        state.favorites.take(MAX_HOME_FAVORITES).forEach { app ->
-            AppTextRow(
-                name = app.displayLabel,
-                state = if (app.isPaused) AppRowState.Paused else AppRowState.Normal,
-                meta = app.meta(),
-                favorite = true,
-                onClick = { onLaunchApp(app) },
-            )
-        }
-
-        Spacer(Modifier.height(12.dp))
         PauseHomeBlock(state, onUnpause, onOpenCategory)
 
         if (!state.hasHomePauseStatus()) {
@@ -1226,7 +1213,6 @@ private fun Modifier.horizontalRouteSwipe(
 
 private const val ROUTE_ANIMATION_MS = 220
 private const val HORIZONTAL_SWIPE_THRESHOLD_PX = 80f
-private const val MAX_HOME_FAVORITES = 8
 
 private fun String.compactFailureSummary(maxLines: Int = 2): String {
     val lines = lineSequence()
