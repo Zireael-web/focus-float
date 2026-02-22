@@ -306,7 +306,11 @@ fun FocusFloatRoot(
                     inDistractingCategory = app.key.ref in state.distractingPackages,
                     onOpen = {
                         selectedApp = null
-                        if (app.isPaused) actions.openPixelFocusModeSettings() else requestOpenApp(app)
+                        if (app.isPaused) actions.launchApp(app) else requestOpenApp(app)
+                    },
+                    onOpenPixelFocusModeSettings = {
+                        selectedApp = null
+                        actions.openPixelFocusModeSettings()
                     },
                     onFavorite = {
                         selectedApp = null
@@ -893,6 +897,7 @@ private fun AppActionsSheet(
     inPrimaryCategory: Boolean,
     inDistractingCategory: Boolean,
     onOpen: () -> Unit,
+    onOpenPixelFocusModeSettings: () -> Unit,
     onFavorite: () -> Unit,
     onRename: () -> Unit,
     onHide: () -> Unit,
@@ -909,7 +914,10 @@ private fun AppActionsSheet(
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(horizontal = FocusTheme.spacing.sheetPad, vertical = 12.dp),
         )
-        SheetAction(if (app.isPaused) "Open Pixel Focus Mode settings" else "Open", onOpen)
+        SheetAction("Open", onOpen)
+        if (app.isPaused) {
+            SheetAction("Open Pixel Focus Mode settings", onOpenPixelFocusModeSettings)
+        }
         SheetAction(if (app.isFavorite) "Remove from favorites" else "Add to favorites", onFavorite)
         SheetAction("Rename", onRename)
         SheetAction("Hide from app list", onHide, muted = app.isProtected)

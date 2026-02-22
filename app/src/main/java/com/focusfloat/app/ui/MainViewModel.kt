@@ -263,9 +263,6 @@ class MainViewModel(
     }
 
     fun launchApp(app: AppEntry) {
-        if (app.isPaused) {
-            return
-        }
         viewModelScope.launch {
             runCatching { container.installedAppsRepository.launch(app) }
                 .onFailure { banner.value = UiBanner("Could not open ${app.displayLabel}", it.message, failed = true) }
