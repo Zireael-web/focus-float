@@ -62,7 +62,6 @@ import com.focusfloat.app.design.AppRowState
 import com.focusfloat.app.design.AppTextRow
 import com.focusfloat.app.design.BannerKind
 import com.focusfloat.app.design.BatteryArc
-import com.focusfloat.app.design.DotKind
 import com.focusfloat.app.design.FocusFloatTheme
 import com.focusfloat.app.design.FocusScreen
 import com.focusfloat.app.design.FocusTheme
@@ -71,12 +70,7 @@ import com.focusfloat.app.design.FocusThemeMode
 import com.focusfloat.app.design.SectionLabel
 import com.focusfloat.app.design.SettingsRow
 import com.focusfloat.app.design.StatusBanner
-import com.focusfloat.app.design.StatusDot
 import com.focusfloat.app.design.TopBar
-import com.focusfloat.app.digitalwellbeing.DigitalWellbeingAutomationState
-import com.focusfloat.app.digitalwellbeing.DigitalWellbeingAutomationStatus
-import com.focusfloat.app.pause.model.PauseSessionStatus
-import java.time.Instant
 import kotlin.math.abs
 
 private enum class Route {
@@ -84,7 +78,6 @@ private enum class Route {
     Home,
     Apps,
     Favorites,
-    Category,
     Distracting,
     Settings,
     Hidden,
@@ -140,7 +133,6 @@ fun FocusFloatRoot(
                 route = addAppsReturnRoute ?: Route.Home
                 addAppsReturnRoute = null
             }
-            Route.Category -> route = Route.Home
             Route.Favorites,
             Route.Distracting -> {
                 route = listReturnRoute
@@ -209,8 +201,6 @@ fun FocusFloatRoot(
                             state = state,
                             onBack = if (onboardingRequired) null else ({ route = Route.Settings }),
                             onSetAsHome = onSetAsHome,
-                            onOpenAccessibilitySettings = actions::openAccessibilitySettings,
-                            onRefresh = actions::refresh,
                             onFinish = {
                                 if (state.homeRoleHeld) {
                                     actions.completeOnboarding()
@@ -229,9 +219,8 @@ fun FocusFloatRoot(
                             onOpenApps = ::openAppsRoute,
                             onOpenFavorites = { openFavoritesRoute() },
                             onOpenSettings = { route = Route.Settings },
-                            onOpenCategory = { route = Route.Category },
                             onOpenDistracting = { openDistractingRoute() },
-                            onUnpause = actions::unpausePrimaryCategory,
+                            onOpenPixelFocusMode = actions::openPixelFocusModeSettings,
                         )
                         targetRoute == Route.Apps -> AppsScreen(
                             title = "All apps",
@@ -246,21 +235,6 @@ fun FocusFloatRoot(
                             onAppClick = { selectedApp = it },
                             onAddApps = {
                                 addAppsReturnRoute = Route.Favorites
-                                route = Route.Apps
-                            },
-                        )
-                        targetRoute == Route.Category -> CategoryScreen(
-                            state = state,
-                            onBack = ::navigateBack,
-                            onPause = {
-                                onRequestNotifications()
-                                actions.pausePrimaryCategory()
-                            },
-                            onUnpause = actions::unpausePrimaryCategory,
-                            onRefresh = actions::refresh,
-                            onAppClick = { selectedApp = it },
-                            onAddApps = {
-                                addAppsReturnRoute = Route.Category
                                 route = Route.Apps
                             },
                         )
@@ -282,6 +256,7 @@ fun FocusFloatRoot(
                             onOpenHidden = { route = Route.Hidden },
                             onOpenOnboarding = { route = Route.Onboarding },
                             onOpenDistracting = { openDistractingRoute(Route.Settings) },
+                            onOpenPixelFocusMode = actions::openPixelFocusModeSettings,
                             onOpenAccessibilitySettings = actions::openAccessibilitySettings,
                         )
                         targetRoute == Route.Hidden -> HiddenAppsScreen(
@@ -302,7 +277,6 @@ fun FocusFloatRoot(
             ) {
                 AppActionsSheet(
                     app = app,
-                    inPrimaryCategory = app.key.ref in state.primaryCategoryPackages,
                     inDistractingCategory = app.key.ref in state.distractingPackages,
                     onOpen = {
                         selectedApp = null
@@ -323,14 +297,6 @@ fun FocusFloatRoot(
                     onHide = {
                         selectedApp = null
                         actions.hideApp(app)
-                    },
-                    onToggleCategory = {
-                        selectedApp = null
-                        if (app.key.ref in state.primaryCategoryPackages) {
-                            actions.removeFromPrimaryPauseCategory(app)
-                        } else {
-                            actions.addToPrimaryPauseCategory(app)
-                        }
                     },
                     onToggleDistracting = {
                         selectedApp = null
@@ -401,9 +367,8 @@ private fun HomeScreen(
     onOpenApps: () -> Unit,
     onOpenFavorites: () -> Unit,
     onOpenSettings: () -> Unit,
-    onOpenCategory: () -> Unit,
     onOpenDistracting: () -> Unit,
-    onUnpause: () -> Unit,
+    onOpenPixelFocusMode: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -425,12 +390,6 @@ private fun HomeScreen(
 
         Spacer(Modifier.weight(1f))
 
-        PauseHomeBlock(state, onUnpause)
-
-        if (!state.hasHomePauseStatus()) {
-            DigitalWellbeingAutomationBanner(state.digitalWellbeingAutomationStatus)
-        }
-
         state.banner?.let { banner ->
             Spacer(Modifier.height(14.dp))
             StatusBanner(
@@ -444,8 +403,8 @@ private fun HomeScreen(
         Spacer(Modifier.height(16.dp))
         ActionLine(text = "All apps", sub = "${state.visibleApps.size} apps", onClick = onOpenApps)
         ActionLine(text = "Favorite apps", sub = "${state.favorites.size} apps", onClick = onOpenFavorites)
-        ActionLine(text = "Paused apps", sub = state.pauseListSubtitle(), onClick = onOpenCategory)
         ActionLine(text = "Distracting apps", sub = "${state.distractingApps.size} apps", onClick = onOpenDistracting)
+        ActionLine(text = "Pixel Focus Mode", sub = "Open Digital Wellbeing", onClick = onOpenPixelFocusMode)
     }
 }
 
@@ -454,15 +413,11 @@ private fun OnboardingScreen(
     state: MainUiState,
     onBack: (() -> Unit)?,
     onSetAsHome: () -> Unit,
-    onOpenAccessibilitySettings: () -> Unit,
-    onRefresh: () -> Unit,
     onFinish: () -> Unit,
     onSkip: () -> Unit,
 ) {
     var step by rememberSaveable { mutableStateOf(0) }
-    val maxStep = 3
-    val categoryName = state.primaryCategory?.name ?: "Paused apps"
-    val pauseEngineReady = state.digitalWellbeingAssistantEnabled
+    val maxStep = 1
 
     Column(Modifier.fillMaxSize().padding(top = 28.dp, bottom = 22.dp)) {
         TopBar(title = "FocusFloat setup", onBack = onBack)
@@ -470,17 +425,7 @@ private fun OnboardingScreen(
         Spacer(Modifier.height(28.dp))
         when (step) {
             0 -> OnboardingIntroStep()
-            1 -> OnboardingHomeStep(homeRoleHeld = state.homeRoleHeld, onSetAsHome = onSetAsHome)
-            2 -> OnboardingAssistantStep(
-                enabled = state.digitalWellbeingAssistantEnabled,
-                onOpenAccessibilitySettings = onOpenAccessibilitySettings,
-                onRefresh = onRefresh,
-            )
-            else -> OnboardingCategoryStep(
-                categoryName = categoryName,
-                appCount = state.primaryCategoryPackages.size,
-                pauseEngineReady = pauseEngineReady,
-            )
+            else -> OnboardingHomeStep(homeRoleHeld = state.homeRoleHeld, onSetAsHome = onSetAsHome)
         }
         Spacer(Modifier.weight(1f))
         if (step > 0) {
@@ -510,7 +455,7 @@ private fun OnboardingIntroStep() {
     )
     Spacer(Modifier.height(18.dp))
     SettingsRow(label = "Minimal launcher", sub = "Text-first home screen with favorites and app search.")
-    SettingsRow(label = "Pause list", sub = "Use Pixel Focus Mode with guided screen automation.")
+    SettingsRow(label = "Pixel Focus Mode", sub = "Open Google's Digital Wellbeing focus controls.")
     SettingsRow(label = "Local control", sub = "No account, servers, tracking, or internet access.")
 }
 
@@ -534,85 +479,12 @@ private fun OnboardingHomeStep(homeRoleHeld: Boolean, onSetAsHome: () -> Unit) {
 }
 
 @Composable
-private fun OnboardingAssistantStep(
-    enabled: Boolean,
-    onOpenAccessibilitySettings: () -> Unit,
-    onRefresh: () -> Unit,
-) {
-    OnboardingCopy(
-        title = "Enable Focus Mode assistant",
-        body = "FocusFloat can use Accessibility to select your pause-list apps inside Pixel Focus Mode.",
-    )
-    Spacer(Modifier.height(18.dp))
-    StatusBanner(
-        title = if (enabled) "Assistant enabled" else "Accessibility permission required",
-        sub = if (enabled) {
-            "FocusFloat can run the guided Focus Mode setup."
-        } else {
-            "Enable FocusFloat Focus Mode assistant. It is separate from the distracting app guard."
-        },
-        action = if (enabled) null else "Open Accessibility",
-        kind = if (enabled) BannerKind.Info else BannerKind.Setup,
-        onAction = onOpenAccessibilitySettings,
-    )
-    Spacer(Modifier.height(12.dp))
-    ActionLine(text = "Refresh status", onClick = onRefresh)
-}
-
-@Composable
-private fun OnboardingCategoryStep(
-    categoryName: String,
-    appCount: Int,
-    pauseEngineReady: Boolean,
-) {
-    OnboardingCopy(
-        title = "Prepare your pause list",
-        body = "Add apps to the pause list, then let FocusFloat select them inside Pixel Focus Mode.",
-    )
-    Spacer(Modifier.height(18.dp))
-    SettingsRow(label = categoryName, sub = "$appCount apps selected")
-    SettingsRow(label = "Focus Mode assistant", value = if (pauseEngineReady) "Ready" else "Required")
-    SettingsRow(label = "Next", sub = "Finish setup, open $categoryName, and add the first apps.")
-}
-
-@Composable
 private fun OnboardingCopy(title: String, body: String) {
     Column(Modifier.padding(horizontal = FocusTheme.spacing.screenPad)) {
         Text(text = title, color = FocusTheme.colors.text, style = FocusTheme.type.sheetTitle)
         Spacer(Modifier.height(10.dp))
         Text(text = body, color = FocusTheme.colors.text2, style = FocusTheme.type.body)
     }
-}
-
-@Composable
-private fun PauseHomeBlock(
-    state: MainUiState,
-    onUnpause: () -> Unit,
-) {
-    val session = state.activeSession
-    if (session == null) return
-    val failed = session.status == PauseSessionStatus.PartiallyFailed ||
-        session.status == PauseSessionStatus.FailedToUnpause
-    StatusBanner(
-        title = pausedAppsTitle(session.packageNames.size, session.pausedUntil, failed),
-        sub = session.failureSummary?.compactFailureSummary(),
-        subMaxLines = 3,
-        action = "Turn off Pixel Focus Mode",
-        kind = if (failed) BannerKind.Failed else BannerKind.Info,
-        onAction = onUnpause,
-    )
-}
-
-@Composable
-private fun DigitalWellbeingAutomationBanner(status: DigitalWellbeingAutomationStatus?) {
-    if (status == null || status.state == DigitalWellbeingAutomationState.Idle) return
-    Spacer(Modifier.height(14.dp))
-    StatusBanner(
-        title = digitalWellbeingAutomationTitle(status),
-        sub = digitalWellbeingAutomationSub(status),
-        subMaxLines = 3,
-        kind = if (status.state == DigitalWellbeingAutomationState.Failed) BannerKind.Failed else BannerKind.Info,
-    )
 }
 
 @Composable
@@ -723,80 +595,6 @@ private fun FavoritesScreen(
 }
 
 @Composable
-private fun CategoryScreen(
-    state: MainUiState,
-    onBack: () -> Unit,
-    onPause: () -> Unit,
-    onUnpause: () -> Unit,
-    onRefresh: () -> Unit,
-    onAppClick: (AppEntry) -> Unit,
-    onAddApps: () -> Unit,
-) {
-    val categoryName = state.primaryCategory?.name ?: "Paused apps"
-    val session = state.activeSession
-    val androidPausedApps = state.primaryCategoryAndroidPausedCount()
-    Column(Modifier.fillMaxSize().padding(top = 28.dp, bottom = 22.dp)) {
-        TopBar(title = categoryName, onBack = onBack)
-        Text(
-            text = state.pauseListCountLine(),
-            color = FocusTheme.colors.text2,
-            style = FocusTheme.type.body,
-            modifier = Modifier.padding(horizontal = FocusTheme.spacing.screenPad),
-        )
-        Spacer(Modifier.height(20.dp))
-        LazyColumn(modifier = Modifier.weight(1f)) {
-            items(state.primaryCategoryApps, key = { it.lazyListKey() }) { app ->
-                AppTextRow(
-                    name = app.displayLabel,
-                    state = app.rowState(),
-                    meta = app.meta(),
-                    onClick = { onAppClick(app) },
-                )
-            }
-        }
-        DigitalWellbeingAutomationBanner(state.digitalWellbeingAutomationStatus)
-        if (session != null) {
-            ActionLine(
-                text = "Turn off Pixel Focus Mode",
-                sub = "Affects every app selected in Pixel Focus Mode.",
-                onClick = onUnpause,
-            )
-        } else {
-            if (androidPausedApps > 0) {
-                ActionLine(text = "Refresh status", sub = "Re-check Android pause state.", onClick = onRefresh)
-            }
-            ActionLine(text = "Add apps", onClick = onAddApps)
-            ActionLine(
-                text = if (state.digitalWellbeingAssistantEnabled) {
-                    "Start Focus Mode assistant"
-                } else {
-                    "Enable Focus Mode assistant"
-                },
-                sub = if (androidPausedApps > 0) {
-                    "Select this pause list in Pixel Focus Mode."
-                } else {
-                    null
-                },
-                enabled = state.primaryCategoryApps.isNotEmpty(),
-                onClick = onPause,
-            )
-        }
-        Row(
-            modifier = Modifier.padding(horizontal = FocusTheme.spacing.screenPad, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            StatusDot(if (state.digitalWellbeingAssistantEnabled) DotKind.Ready else DotKind.Hollow)
-            Spacer(Modifier.width(10.dp))
-            Text(
-                text = if (state.digitalWellbeingAssistantEnabled) "Assistant ready" else "Accessibility required",
-                color = FocusTheme.colors.text2,
-                style = FocusTheme.type.caption,
-            )
-        }
-    }
-}
-
-@Composable
 private fun DistractingScreen(
     state: MainUiState,
     onBack: () -> Unit,
@@ -850,24 +648,19 @@ private fun SettingsScreen(
     onOpenHidden: () -> Unit,
     onOpenOnboarding: () -> Unit,
     onOpenDistracting: () -> Unit,
+    onOpenPixelFocusMode: () -> Unit,
     onOpenAccessibilitySettings: () -> Unit,
 ) {
     Column(Modifier.fillMaxSize().padding(top = 28.dp)) {
         TopBar(title = "Settings", onBack = onBack)
         SettingsRow(label = "Set as home screen", onClick = onSetAsHome)
-        SettingsRow(label = "Setup guide", sub = "Home, assistant, and pause list", onClick = onOpenOnboarding)
+        SettingsRow(label = "Setup guide", sub = "Home screen basics", onClick = onOpenOnboarding)
         SettingsRow(label = "Favorites", sub = "${state.favorites.size} apps", onClick = onOpenFavorites)
         SettingsRow(label = "Hidden apps", sub = "${state.hiddenApps.size} apps", onClick = onOpenHidden)
-        SettingsRow(label = "Pause list", sub = state.primaryCategory?.name ?: "Paused apps")
         SettingsRow(label = "Distracting apps", sub = "${state.distractingApps.size} apps", onClick = onOpenDistracting)
+        SettingsRow(label = "Pixel Focus Mode", sub = "Open Digital Wellbeing", onClick = onOpenPixelFocusMode)
         SettingsRow(label = "External launch guard", sub = "Accessibility permission", onClick = onOpenAccessibilitySettings)
         SettingsRow(label = "Appearance", sub = "${state.settings?.themeMode ?: FocusThemeMode.Amoled} - ${state.settings?.textScale ?: FocusTextScale.Medium}")
-        SettingsRow(
-            label = "Focus Mode assistant",
-            sub = if (state.digitalWellbeingAssistantEnabled) "Enabled" else "Accessibility permission",
-            onClick = onOpenAccessibilitySettings,
-        )
-        SettingsRow(label = "Debug", sub = "Active sessions: ${if (state.activeSession == null) 0 else 1}")
     }
 }
 
@@ -894,14 +687,12 @@ private fun HiddenAppsScreen(
 @Composable
 private fun AppActionsSheet(
     app: AppEntry,
-    inPrimaryCategory: Boolean,
     inDistractingCategory: Boolean,
     onOpen: () -> Unit,
     onOpenPixelFocusModeSettings: () -> Unit,
     onFavorite: () -> Unit,
     onRename: () -> Unit,
     onHide: () -> Unit,
-    onToggleCategory: () -> Unit,
     onToggleDistracting: () -> Unit,
     onAppInfo: () -> Unit,
 ) {
@@ -924,10 +715,6 @@ private fun AppActionsSheet(
         if (app.isProtected) {
             SheetAction("Protected", {}, muted = true)
         } else {
-            SheetAction(
-                if (inPrimaryCategory) "Remove from pause list" else "Add to pause list",
-                onToggleCategory,
-            )
             if (inDistractingCategory) {
                 SheetAction("Remove from Distracting apps", onToggleDistracting)
             } else if (!app.isPaused) {
@@ -1086,68 +873,6 @@ private fun AppEntry.meta(): String? {
 
 private fun AppEntry.lazyListKey(): String = "${key.packageName}/${key.className}/${key.userSerial}"
 
-private fun MainUiState.pauseListSubtitle(): String {
-    val session = activeSession
-    return if (session != null) {
-        "${session.packageNames.size} ${appCountLabel(session.packageNames.size)} paused"
-    } else if (primaryCategoryPackages.isEmpty()) {
-        "No apps in list"
-    } else {
-        "${primaryCategoryPackages.size} ${appCountLabel(primaryCategoryPackages.size)} in list"
-    }
-}
-
-private fun MainUiState.primaryCategoryAndroidPausedCount(): Int {
-    if (activeSession != null) return 0
-    return primaryCategoryApps.count { it.isPaused }
-}
-
-private fun MainUiState.hasHomePauseStatus(): Boolean {
-    return activeSession != null
-}
-
-private fun MainUiState.pauseListCountLine(): String {
-    val androidPausedApps = primaryCategoryAndroidPausedCount()
-    return if (androidPausedApps > 0) {
-        "${primaryCategoryApps.size} ${appCountLabel(primaryCategoryApps.size)} in list; " +
-            "$androidPausedApps ${appCountLabel(androidPausedApps)} paused by Android"
-    } else {
-        "${primaryCategoryApps.size} ${appCountLabel(primaryCategoryApps.size)} in list"
-    }
-}
-
-private fun pausedAppsTitle(count: Int, pausedUntil: Instant, failed: Boolean): String {
-    val paused = "$count ${appCountLabel(count)} paused"
-    return if (failed) {
-        "$paused; some failed"
-    } else {
-        "$paused until ${formatTime(pausedUntil)}"
-    }
-}
-
-private fun digitalWellbeingAutomationTitle(status: DigitalWellbeingAutomationStatus): String {
-    return when (status.state) {
-        DigitalWellbeingAutomationState.Running -> "Focus Mode assistant running"
-        DigitalWellbeingAutomationState.Completed -> "Focus Mode assistant completed"
-        DigitalWellbeingAutomationState.Failed -> "Focus Mode assistant failed"
-        DigitalWellbeingAutomationState.Idle -> "Focus Mode assistant"
-    }
-}
-
-private fun digitalWellbeingAutomationSub(status: DigitalWellbeingAutomationStatus): String? {
-    val progress = if (status.total > 0 && status.state == DigitalWellbeingAutomationState.Running) {
-        "${status.completed.coerceIn(0, status.total)} of ${status.total} apps"
-    } else {
-        null
-    }
-    return listOfNotNull(status.message, progress)
-        .distinct()
-        .joinToString("\n")
-        .ifBlank { null }
-}
-
-private fun appCountLabel(count: Int): String = if (count == 1) "app" else "apps"
-
 private fun routeSlideDirection(initial: Route, target: Route): Int {
     return if (target.horizontalPosition() >= initial.horizontalPosition()) 1 else -1
 }
@@ -1158,7 +883,6 @@ private fun Route.horizontalPosition(): Int {
         Route.Apps -> 1
         Route.Onboarding,
         Route.Favorites,
-        Route.Category,
         Route.Distracting,
         Route.Settings,
         Route.Hidden -> 1
