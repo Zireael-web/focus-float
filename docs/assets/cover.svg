@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="460" viewBox="0 0 960 460" role="img" aria-labelledby="title description">
+  <title id="title">FocusFloat — A quiet home screen</title>
+  <desc id="description">Concept illustration of the project: a black phone screen with a clock and plain-text app list.</desc>
+  <rect width="960" height="460" rx="28" fill="#f1f1ee"/>
+  <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif">
+    <text x="44" y="64" fill="#52675b" font-size="30">FocusFloat</text>
+    <text x="40" y="167" fill="#34453d" font-size="62" font-weight="650" letter-spacing="-1.2">A quiet</text>
+    <text x="40" y="242" fill="#34453d" font-size="62" font-weight="650" letter-spacing="-1.2">home screen</text>
+    <text x="44" y="389" fill="#52675b" font-size="30">Android launcher · Kotlin</text>
+  </g>
+  <g transform="translate(640 64)">
+    <circle cx="124" cy="152" r="130" fill="#e4e4df"/>
+    <rect x="52" y="6" width="150" height="292" rx="28" fill="#141414"/>
+    <rect x="61" y="15" width="132" height="274" rx="21" fill="#000"/>
+    <text x="74" y="72" fill="#f4f4f5" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="34" font-weight="300" letter-spacing="-0.5">09:41</text>
+    <path d="M76 88h62" stroke="#6b6b6e" stroke-width="6" stroke-linecap="round"/>
+    <path d="M76 190h74M76 218h58M76 246h82" stroke="#d8d8da" stroke-width="8" stroke-linecap="round"/>
+    <path d="M76 202h40M76 230h30M76 258h46" stroke="#5a5a5d" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="206" cy="246" r="40" fill="#b6c7b0"/>
+    <path d="m189 246 12 12 24-25" fill="none" stroke="#566e56" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>

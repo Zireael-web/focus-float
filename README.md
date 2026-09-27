@@ -1,3 +1,5 @@
+![FocusFloat — project illustration](docs/assets/cover.svg)
+
 # FocusFloat
 
 **English** | [Русский](README.ru.md)
@@ -5,6 +7,8 @@
 A minimalist Android launcher. It replaces the stock home screen with a calm, near-monochrome one: a clock, the date and plain-text app lists instead of bright icons. Built for the Google Pixel 7 and fully local.
 
 **[Download the APK](https://github.com/Zireael-web/focus-float/releases/latest)** · **[Interactive design prototype](https://zireael-web.github.io/focus-float/design/FocusFloat.html)**
+
+<img src="docs/assets/screens.png" alt="FocusFloat screens: home screen, all apps list and app actions" width="100%">
 
 A personal side project for my own phone, where I explore native Android development with Kotlin and Jetpack Compose.
 
