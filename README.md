@@ -1,79 +1,85 @@
 # FocusFloat
 
-Минималистичный лаунчер для Android. Он заменяет стандартный домашний экран на спокойный, почти чёрно-белый: часы, дата и текстовые списки приложений без ярких иконок. Сделан под Google Pixel 7 и работает полностью локально.
+**English** | [Русский](README.ru.md)
 
-Мой pet-проект для собственного телефона: здесь пробую нативную разработку под Android на Kotlin и Jetpack Compose.
+A minimalist Android launcher. It replaces the stock home screen with a calm, near-monochrome one: a clock, the date and plain-text app lists instead of bright icons. Built for the Google Pixel 7 and fully local.
 
-[Возможности](#возможности) · [Приватность](#приватность) · [Сборка](#сборка-из-исходников) · [Структура](#структура-проекта) · [Дизайн](#дизайн)
+A personal side project for my own phone, where I explore native Android development with Kotlin and Jetpack Compose.
+
+[Features](#features) · [Privacy](#privacy) · [Build](#build-from-source) · [Structure](#project-structure) · [Design](#design)
 
 **Kotlin · Jetpack Compose · Room · DataStore · WorkManager · Android 8.0+**
 
-## Возможности
+## Features
 
-- Домашний экран с часами, датой и индикатором заряда. Ниже — текстовые ссылки: все приложения, избранные, отвлекающие и режим фокусировки Pixel.
-- AMOLED-чёрная тема по умолчанию. Цвет используется только для ошибок.
-- Список всех приложений с поиском. Приложение можно добавить в избранное, переименовать, скрыть из списка, отметить как отвлекающее или открыть его системную страницу.
-- Отвлекающие приложения: перед запуском нужно ввести слово `confirmed`. Это не блокировка, а осознанная пауза перед открытием.
-- Защита внешних запусков: необязательная служба специальных возможностей показывает тот же экран подтверждения, если отвлекающее приложение открывают в обход лаунчера — например, из уведомления.
-- Быстрый переход в режим фокусировки Pixel (Digital Wellbeing).
-- Мастер первоначальной настройки: помогает назначить FocusFloat домашним экраном.
+- Home screen with a clock, the date and a battery indicator. Below them are plain-text links: all apps, favorites, distracting apps and Pixel Focus Mode.
+- AMOLED-black theme by default. Color is used only for errors.
+- A searchable list of all apps. Any app can be added to favorites, renamed, hidden from the list, marked as distracting, or opened in its system settings page.
+- Distracting apps: you have to type the word `confirmed` before one opens. It is friction, not a block — a deliberate pause before opening.
+- External launch guard: an optional accessibility service shows the same confirmation screen when a distracting app is opened outside the launcher, for example from a notification.
+- A shortcut to Pixel Focus Mode (Digital Wellbeing).
+- A setup guide that helps make FocusFloat the default home app.
 
-## Приватность
+## Privacy
 
-FocusFloat не ходит в сеть: в манифесте нет разрешения `INTERNET`, а `ACCESS_NETWORK_STATE`, которое добавляют зависимости, явно удалено. Нет аккаунтов, аналитики и серверной части. Избранное, переименования, списки и настройки хранятся на устройстве в Room и DataStore.
+FocusFloat never goes online: the manifest has no `INTERNET` permission, and `ACCESS_NETWORK_STATE`, which dependencies add, is explicitly removed. There are no accounts, no analytics and no backend. Favorites, renamed apps, lists and settings are stored on the device with Room and DataStore.
 
-Службы специальных возможностей по умолчанию выключены и включаются вручную в настройках Android. Служба защиты внешних запусков не читает содержимое окон: она только узнаёт, какое приложение открылось. Экспериментальная служба автоматизации режима фокусировки предназначена для экранов Digital Wellbeing.
+Both accessibility services are off by default and have to be turned on manually in Android settings. The external launch guard does not read window contents: it only learns which app was opened. The experimental Focus Mode automation service is meant for the Digital Wellbeing screens.
 
-## Требования
+## Requirements
 
-- Android 8.0 (API 26) или новее. Режим фокусировки завязан на Digital Wellbeing от Google, поэтому эта часть рассчитана на Pixel.
-- JDK 17 и Android SDK с платформой 36 — например, из Android Studio. Нужную версию Gradle скачает wrapper.
+- Android 8.0 (API 26) or newer. Focus Mode relies on Google's Digital Wellbeing, so that part targets Pixel phones.
+- JDK 17 and the Android SDK with platform 36, for example from Android Studio. The Gradle wrapper downloads the right Gradle version.
 
-## Сборка из исходников
+## Build from source
 
-В корне репозитория выполните:
+From the repository root:
 
 ```sh
 ./gradlew assembleDebug
 ```
 
-APK появится в `app/build/outputs/apk/debug/`. Установка на подключённый телефон:
+The APK lands in `app/build/outputs/apk/debug/`. To install it on a connected phone:
 
 ```sh
 ./gradlew installDebug
 ```
 
-После установки нажмите «Домой» и выберите FocusFloat, или пройдите мастер настройки в самом приложении.
+After installing, press Home and choose FocusFloat, or go through the setup guide inside the app.
 
-Юнит-тесты:
+Unit tests:
 
 ```sh
 ./gradlew testDebugUnitTest
 ```
 
-### Сборка `internal` со своей подписью
+### Signed `internal` build
 
-Скопируйте `keystore.properties.example` в `keystore.properties` и укажите путь к хранилищу ключей, алиас и пароли. Вместо файла можно задать переменные окружения `FOCUSFLOAT_INTERNAL_*`. Затем выполните `./gradlew assembleInternal`. Файлы `keystore.properties` и `keystores/` в Git не попадают.
+Copy `keystore.properties.example` to `keystore.properties` and fill in the keystore path, alias and passwords. You can set the `FOCUSFLOAT_INTERNAL_*` environment variables instead. Then run `./gradlew assembleInternal`. `keystore.properties` and `keystores/` are never committed.
 
-## Структура проекта
+## Project structure
 
 ```text
 FocusFloat/
 ├── app/src/main/java/com/focusfloat/app/
-│   ├── ui/                Экраны на Compose и MainViewModel
-│   ├── design/            Тема и базовые компоненты (токены из docs/design)
-│   ├── launcher/          Список приложений через LauncherApps, избранное, переименование, скрытие
-│   ├── distracting/       Подтверждение запуска и служба защиты внешних запусков
-│   ├── digitalwellbeing/  Переход в режим фокусировки Pixel и его автоматизация
-│   ├── pause/             Ранний механизм паузы приложений до полуночи через Shizuku
-│   ├── settings/, data/   DataStore и база Room
-│   └── core/              Модели и работа со временем
-├── app/src/test/          Юнит-тесты
-└── docs/                  Дизайн и заметки для проверки на устройстве
+│   ├── ui/                Compose screens and MainViewModel
+│   ├── design/            Theme and base components (tokens from docs/design)
+│   ├── launcher/          App list via LauncherApps, favorites, renaming, hiding
+│   ├── distracting/       Launch confirmation and the external launch guard
+│   ├── digitalwellbeing/  Pixel Focus Mode shortcut and its automation
+│   ├── pause/             Early mechanism for pausing apps until midnight via Shizuku
+│   ├── settings/, data/   DataStore and the Room database
+│   └── core/              Models and time handling
+├── app/src/test/          Unit tests
+└── docs/                  Design and on-device check notes
 ```
 
-## Дизайн
+## Design
 
-В `docs/design/` лежат дизайн-токены (`TOKENS.md`), описание компонентов (`COMPONENTS.md`) и интерактивный макет примерно 45 экранов (`FocusFloat.html`). Макет отражает исходную концепцию: пауза категорий приложений через Shizuku в текущей версии заменена переходом в режим фокусировки Pixel. Макет открывается через локальный статический сервер, например `python3 -m http.server` в папке `docs/design`.
+`docs/design/` holds the design tokens (`TOKENS.md`), the component spec (`COMPONENTS.md`) and an interactive mockup of about 45 screens (`FocusFloat.html`). **[Open the interactive prototype](https://zireael-web.github.io/focus-float/design/FocusFloat.html)**. The mockup reflects the original concept: pausing app categories through Shizuku has since been replaced by the Pixel Focus Mode shortcut. Locally, serve the folder with any static server, for example `python3 -m http.server` in `docs/design`.
 
-Что стоит перепроверить на реальном устройстве, собрано в [`docs/spikes.md`](docs/spikes.md).
+Things worth re-checking on a real device are listed in [`docs/spikes.md`](docs/spikes.md).
+
+## License
+
+[MIT](LICENSE)
