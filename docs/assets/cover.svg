@@ -1,12 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="960" height="460" viewBox="0 0 960 460" role="img" aria-labelledby="title description">
-  <title id="title">FocusFloat — A quiet home screen</title>
-  <desc id="description">Concept illustration of the project: a black phone screen with a clock and plain-text app list.</desc>
+  <title id="title">FocusFloat — Тихий домашний экран</title>
+  <desc id="description">Концептуальная иллюстрация проекта: чёрный экран телефона с часами и текстовым списком приложений.</desc>
   <rect width="960" height="460" rx="28" fill="#f1f1ee"/>
   <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif">
     <text x="44" y="64" fill="#52675b" font-size="30">FocusFloat</text>
-    <text x="40" y="167" fill="#34453d" font-size="62" font-weight="650" letter-spacing="-1.2">A quiet</text>
-    <text x="40" y="242" fill="#34453d" font-size="62" font-weight="650" letter-spacing="-1.2">home screen</text>
-    <text x="44" y="389" fill="#52675b" font-size="30">Android launcher · Kotlin</text>
+    <text x="40" y="167" fill="#34453d" font-size="62" font-weight="650" letter-spacing="-1.2">Тихий</text>
+    <text x="40" y="242" fill="#34453d" font-size="62" font-weight="650" letter-spacing="-1.2">домашний экран</text>
+    <text x="44" y="389" fill="#52675b" font-size="30">Лаунчер для Android · Kotlin</text>
   </g>
   <g transform="translate(640 64)">
     <circle cx="124" cy="152" r="130" fill="#e4e4df"/>
